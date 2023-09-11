@@ -1,0 +1,41 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body{
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: hsl(264, 5%, 19%);
+    font-size: 1.25rem;
+    font-family: cursive;
+    
+}
+main{
+    min-height: 200px;
+    width: 400px;
+    background-color: hsl(214, 100%, 81%);
+    isolation: isolate;
+    box-shadow: 0 0 15px 10px hsl(0, 1%, 15%);
+    opacity: 0.9;
+    display: flex;
+    flex-direction: column;
+    align-items:flex-start;
+    padding-left: 2rem;
+    justify-content: center;
+    border-radius: 1.25em;
+    row-gap: 10px;
+}
+
+.scoreField, .ballField{
+    display: flex;
+    column-gap: 1em;
+}
+
+main > p{
+    font-weight: bold;
+}
