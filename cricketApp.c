@@ -1,23 +1,27 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <time.h> // for seeding
+#include <time.h> 
+#include <termios.h>
+#include <unistd.h>
 
-// Important function
+#define PASSWORD "bottleOpener"
+
+// imp functions
+void adminValidation();
 void dataCreate(char matchOver);
 int dataCollect();
 void displayData();
 
-// utilities functiion
+// utilities functions
 void isOver();
 void wicketAll();
 void secondInning();
 void getScore(int *tempRunPtr);
 int randomNum();
+char *transformLower(char *string);
 
-// global variables
+
 int score = 0;
 int wicket = 0;
 int over = 0;
@@ -26,16 +30,32 @@ int inning = 1;
 int totalOver;
 
 int team1run;
-
 char team1[40], team2[40];
 
-// file pointers
+// pointers
 FILE *appendAndReadFp = NULL;
 
-// main function [function starts here]
 int main()
 {
-    printf("\n\n------------------ Cricket App ------------------\n\n");
+    char adminAccessUser[40];
+    printf("-------- ADMIN ACCESS REQUIRED --------\n");
+    printf("Enter your Name: ");
+    fgets(adminAccessUser, 40, stdin);
+    adminValidation();
+    
+    appendAndReadFp = fopen("adminLogin.csv", "a");
+    fprintf(appendAndReadFp,"Date of Access,Name \n");
+
+    time_t current_time;
+    
+    time(&current_time);
+    char *dateAndTime = ctime(&current_time);  
+    dateAndTime[strlen(dateAndTime) -1] = '\0';  
+
+    fprintf(appendAndReadFp, "%s,%s", dateAndTime, adminAccessUser);
+    fclose(appendAndReadFp);
+
+    printf("\n------------------ Cricket App ------------------\n\n");
     printf("Enter the Batsmans team Name: ");
     scanf("%s", &team1);
     printf("Enter the Bowlers team Name: ");
@@ -43,39 +63,60 @@ int main()
     printf("Enter the total overs: ");
     scanf("%d", &totalOver);
 
-    // runs a function named dataCollect, which runs recursively
     dataCollect();
     return 0;
 }
 
-// Cricket data collector (takes data recursively)
+
+void adminValidation()
+{
+    char password[14];
+    char ch;
+
+    struct termios old_settings, new_settings;
+    tcgetattr(STDIN_FILENO, &old_settings);
+    
+    new_settings = old_settings; 
+
+    new_settings.c_lflag &= ~(ICANON | ECHO);        
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_settings); 
+    printf("Enter Password:\t");
+    for (int i = 0; i < 12; i++)
+    {
+        ch = getc(stdin);
+        password[i] = ch;
+        printf("*");
+    }
+    password[12] = '\0';
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
+
+    if (strcmp(password, PASSWORD) != 0)
+    {
+        printf("\nWrong Password Please Try Again \n\n");
+        adminValidation();
+    }
+    else printf("\n --- USER AUTHORIZED --- \n\n");
+}
+
+
 int dataCollect()
 {
-    // helper variable for state management
     char tempBallC[2];
-    // to state manage
     int tempBall;
-    // for wide / no ball of [wrong ball]
     char ballStatus[2];
-    // for wicket or not
     char tempWicketStatus[2];
-    // current run store
     int tempRun;
 
-    // ask user to insert value
     while (!(strcmp(tempBallC, "0") == 0 || strcmp(tempBallC, "1") == 0))
     {
         printf("\n\n Enter ball (0 for wrong ball) (1 for right ball): ");
         scanf("%s", &tempBallC);
     }
-    // converting string to num as switch statement won't take string as an parameter.
-    // Alternatively, using characters would have done the trick.
+    
     tempBall = atoi(tempBallC);
-
-    // switching based on values
+    
     switch (tempBall)
-    {
-    // if 0 was pressed.
+    {    
     case 0:
     {
         char wideBallComment[][100] = {
@@ -87,10 +128,9 @@ int dataCollect()
             "!!! Oh, that's a costly mistake by the bowler. No-ball! The batsman gets a free hit now !!!",
             "!!! The bowler overstepped, and it's a no-ball. The batsman will be looking to capitalize on this !!!",
             "!!! A no-ball! That's not what the bowling side needed. Extra delivery and a free hit coming up !!!"};
-
-        // generating random index for comment
+   
         int randomIndex = randomNum();
-        while (!(strcmp(strlwr(ballStatus), "w") == 0 || strcmp(strlwr(ballStatus), "n") == 0))
+        while (!(strcmp(transformLower(ballStatus), "w") == 0 || strcmp(transformLower(ballStatus), "n") == 0))
         {
             printf("\n Enter wide (W) or No Ball(N): ");
             scanf("%s", &ballStatus);
@@ -98,7 +138,7 @@ int dataCollect()
 
         getScore(&tempRun);
 
-        if (strcmp(ballStatus, "W") == 0)
+        if (strcmp(ballStatus, "w") == 0)
         {
             printf("\n\n COMMENT:- %s", wideBallComment[randomIndex]);
         }
@@ -110,18 +150,17 @@ int dataCollect()
     }
     break;
 
-        // if 1 was pressed.
+        
     case 1:
-    {
-        // validating input
-        while (!(strcmp(strlwr(tempWicketStatus), "w") == 0 || strcmp(strlwr(tempWicketStatus), "n") == 0))
+    {        
+        while (!(strcmp(transformLower(tempWicketStatus), "w") == 0 || strcmp(transformLower(tempWicketStatus), "n") == 0))
         {
             printf("\n (W) for wicket \t (N) for no wicket : ");
             scanf("%s", &tempWicketStatus);
         }
         ball++;
 
-        if (strcmp(strlwr(tempWicketStatus), "w") == 0)
+        if (strcmp(transformLower(tempWicketStatus), "w") == 0)
         {
             printf("\n\n Comment:- What a loss for team %s", team1);
             int a = randomNum();
@@ -129,34 +168,24 @@ int dataCollect()
             wicketAll();
         }
 
-        getScore(&tempRun);
-        // check if the over ended
+        getScore(&tempRun);   
         isOver();
     }
     break;
 
-    // if neither, However getting to this statement is impossible as we have validated input
     default:
         printf("\n\n Invalid input");
         break;
     }
-
-    // if 2nd inning ended
+    
     if (inning > 2)
-    {
-        // when 2nd inning ends, 'inning' will increased by 1 to ensure inning ended.
-        // But we can't display 3rd inning in our page so inning will be decreased by 1(meaning inning now is 2);
-        inning--;
-        // one last time data Creation
+    {        
+        inning--;   
         dataCreate('y');
-
-        // resetting inning value
         inning = 0;
-        // this whole function ends
         return 0;
     }
 
-    // if inning is still running
     else
     {
         dataCreate('n');
@@ -164,13 +193,11 @@ int dataCollect()
     }
 }
 
-// creates a js (module) file containing all the cricket data for displaying in Html site.
 void dataCreate(char matchOver)
 {
     long currentPosition;
     appendAndReadFp = fopen("score.txt", "a+");
-
-    // Check if the file was opened successfully
+    
     if (appendAndReadFp == NULL)
     {
         printf("Unable to open the file.\n");
@@ -178,7 +205,7 @@ void dataCreate(char matchOver)
     }
 
     fprintf(appendAndReadFp, "\n");
-    currentPosition = ftell(appendAndReadFp); // ftell Basically stores pointer position, - used in reading appended data
+    currentPosition = ftell(appendAndReadFp); 
 
     fprintf(appendAndReadFp, "\t Current Inning ----->  %d\n", inning);
     fprintf(appendAndReadFp, "\t Total Over To play ->  %d \n", totalOver);
@@ -204,11 +231,10 @@ void dataCreate(char matchOver)
     }
 
     fclose(appendAndReadFp);
-
     displayData(currentPosition);
 }
 
-// # display function
+
 void displayData(long currentPosition)
 {
     printf("\n");
@@ -218,8 +244,7 @@ void displayData(long currentPosition)
         printf("Unable to open the file.\n");
         exit(1);
     }
-
-    // Set the file pointer to the stored position
+    
     fseek(appendAndReadFp, currentPosition, SEEK_SET);
 
     printf("\n\t--- Displaying Data ---\n\n");
@@ -228,37 +253,31 @@ void displayData(long currentPosition)
     {
         putc(ch, stdout);
     }
-    // Close the file when done
+    
     fclose(appendAndReadFp);
 }
 
-// # utility function()
-// checks if over ends
 void isOver()
 {
     if (ball == 6)
     {
         over++;
         ball = 0;
-        // has over reached maximum over (e.g. 20 over in T20 match Or 50 over in ODI match)
+        
         if (over == totalOver)
         {
-            inning++;
-
-            // if 2nd inning began then run  secondInning() :-[swap teams name]
+            inning++;            
             inning == 2 ? secondInning() : 0;
         }
-        // ball = 0;
+        
     }
 }
 
-// checks for wicket
 void wicketAll()
 {
     if (wicket == 10)
     {
-        inning++;
-        // if 2nd inning began then run  secondInning() :-[swap teams name]
+        inning++;        
         inning == 2 ? secondInning() : 0;
         over = 0;
         score = 0;
@@ -266,7 +285,6 @@ void wicketAll()
     }
 }
 
-// second Inning match function
 void secondInning()
 {
     dataCreate('n');
@@ -280,9 +298,7 @@ void secondInning()
     team1run = score;
     over = 0;
     score = 0;
-    wicket = 0;
-
-    printf("%d", team1run);
+    wicket = 0;    
 }
 
 void getScore(int *tempRunPtr)
@@ -298,10 +314,20 @@ void getScore(int *tempRunPtr)
     score += *tempRunPtr;
 }
 
-// Generate Random Number
 int randomNum()
 {
     srand(time(NULL));
-    int randomNum = rand() % 3; // 0-2
+    int randomNum = rand() % 3; 
     return randomNum;
+}
+
+char *transformLower(char *string)
+{
+    int i = 0;
+    while (string[i] != '\0')
+    {
+        if (string[i] >= 'A' && string[i] <= 'Z')  string[i] |= 32; 
+        i++;
+    }
+    return string;
 }
